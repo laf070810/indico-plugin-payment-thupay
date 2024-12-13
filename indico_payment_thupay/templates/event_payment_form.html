@@ -1,0 +1,26 @@
+Clicking on the <strong>Pay now</strong> button you will get redirected to the THUpay site in order to complete your
+transaction.
+
+<dl class="i-data-list">
+    <dt>{% trans %}First name{% endtrans %}</dt>
+    <dd>{{ registration.first_name }}</dd>
+    <dt>{% trans %}Last name{% endtrans %}</dt>
+    <dd>{{ registration.last_name }}</dd>
+    <dt>{% trans %}Total amount{% endtrans %}</dt>
+    <dd>{{ format_currency(amount, currency, locale=session.lang) }}</dd>
+    <dt></dt>
+    <dd>
+        <form action="{{ settings.url }}" method="POST">
+            <input type="hidden" name="paymentItemId" value="{{ paymentItemId }}">
+            <input type="hidden" name="method" value="{{ method }}">
+            <input type="hidden" name="timestamp" value="{{ timestamp }}">
+            <input type="hidden" name="signType" value="{{ signType }}">
+            <input type="hidden" name="sign" value="{{ sign }}">
+            <input type="hidden" name="charset" value="{{ charset }}">
+            <input type="hidden" name="version" value="{{ version }}">
+            <input type="hidden" name="bizContent" value="{{ bizContent }}">
+
+            <input type="image" name="submit" src="{{ logo_url }}" alt="THUpay">
+        </form>
+    </dd>
+</dl>
