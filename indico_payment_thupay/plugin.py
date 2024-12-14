@@ -118,7 +118,7 @@ class THUpayPaymentPlugin(PaymentPluginMixin, IndicoPlugin):
         biz_content = {}
         biz_content["outTradeNo"] = str(time.time())
         biz_content["tradeName"] = f"{plain_name}: registration for {plain_title}"
-        biz_content["tradeAmount"] = str(float(amount))
+        biz_content["tradeAmount"] = round(amount, 2).to_eng_string()
         biz_content["moneyTypeId"] = currency
         biz_content["timeout"] = "15"
         biz_content["returnUrl"] = url_for_plugin(
