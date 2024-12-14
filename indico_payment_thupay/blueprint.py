@@ -5,7 +5,7 @@ from indico_payment_thupay.controllers import RHTHUpayNotify, RHTHUpaySuccess
 blueprint = IndicoPluginBlueprint(
     "payment_thupay",
     __name__,
-    url_prefix="/event/<int:event_id>/registrations/<int:reg_form_id>/payment/response/thupay",
+    url_prefix="/event/<int:event_id>/registrations/<int:reg_form_id>/thupay",
 )
 
 # sync return
