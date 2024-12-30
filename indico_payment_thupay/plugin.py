@@ -10,10 +10,15 @@ from indico.modules.events.payment import (
     PaymentPluginMixin,
     PaymentPluginSettingsFormBase,
 )
+from indico.modules.events.registration.models.registrations import (
+    Registration,
+    RegistrationState,
+)
 from indico.util.string import remove_accents, str_to_ascii
 from indico.web.forms.validators import UsedIf
-from wtforms.fields import StringField, URLField
-from wtforms.validators import DataRequired, Optional
+from sqlalchemy.orm.exc import MultipleResultsFound, NoResultFound
+from wtforms.fields import IntegerField, StringField, URLField
+from wtforms.validators import DataRequired, Optional, Regexp
 
 from indico_payment_thupay import _
 from indico_payment_thupay.blueprint import blueprint
@@ -56,6 +61,35 @@ class EventSettingsForm(PaymentEventSettingsFormBase):
         [UsedIf(lambda form, _: form.enabled.data), DataRequired()],
         description=_("The private key of the project."),
     )
+    allowed_registration_form_ids = StringField(
+        _("allowed_registration_form_ids"),
+        [
+            UsedIf(lambda form, _: form.enabled.data),
+            Regexp(r"\[\d+( *, *\d+)*\]"),
+            Optional(),
+        ],
+        description=_(
+            "(whitelist) JSON string of non-empty list of IDs of the registration forms which are allowed to use this payment method. Registration forms that are not in this list are not allowed. Empty string for no requirement. Actual allowed registration forms are the intersection of the allowed ones of allowed_registration_form_ids and disallowed_registration_form_ids."
+        ),
+    )
+    disallowed_registration_form_ids = StringField(
+        _("disallowed_registration_form_ids"),
+        [
+            UsedIf(lambda form, _: form.enabled.data),
+            Regexp(r"\[\d+( *, *\d+)*\]"),
+            Optional(),
+        ],
+        description=_(
+            "(blacklist) JSON string of non-empty list of IDs of the registration forms which are not allowed to use this payment method. Registration forms that are not in this list are allowed. Empty string for no requirement. Actual allowed registration forms are the intersection of the allowed ones of allowed_registration_form_ids and disallowed_registration_form_ids."
+        ),
+    )
+    related_registration_form_id = IntegerField(
+        _("related_registration_form_id"),
+        [UsedIf(lambda form, _: form.enabled.data), Optional()],
+        description=_(
+            "ID of the registration form which is required to be completed before the payment. Empty for no requirement. Currently only one related registration form is supported."
+        ),
+    )
 
 
 class THUpayPaymentPlugin(PaymentPluginMixin, IndicoPlugin):
@@ -79,6 +113,9 @@ class THUpayPaymentPlugin(PaymentPluginMixin, IndicoPlugin):
         "method_name": None,
         "payment_item_id": None,
         "payment_item_key": None,
+        "allowed_registration_form_ids": "",
+        "disallowed_registration_form_ids": "",
+        "related_registration_form_id": None,
     }
 
     def init(self):
@@ -101,6 +138,82 @@ class THUpayPaymentPlugin(PaymentPluginMixin, IndicoPlugin):
         amount = data["amount"]
         currency = data["currency"]
 
+        # -------- deal with allowed_registration_form_ids and disallowed_registration_form_ids --------
+        allowed_registration_form_ids = (
+            json.loads(event_settings["allowed_registration_form_ids"])
+            if event_settings["allowed_registration_form_ids"] != ""
+            else None
+        )
+        disallowed_registration_form_ids = (
+            json.loads(event_settings["disallowed_registration_form_ids"])
+            if event_settings["disallowed_registration_form_ids"] != ""
+            else []
+        )
+
+        if allowed_registration_form_ids is not None:
+            if registration.registration_form_id not in allowed_registration_form_ids:
+                data["payment_allowed"] = False
+                data["message"] = (
+                    "Payment method not allowed in this registration form! Please use appropriate methods. "
+                )
+                return
+            elif registration.registration_form_id in disallowed_registration_form_ids:
+                data["payment_allowed"] = False
+                data["message"] = (
+                    "Payment method not allowed in this registration form! Please use appropriate methods. "
+                )
+                return
+            else:
+                data["payment_allowed"] = True
+        elif registration.registration_form_id in disallowed_registration_form_ids:
+            data["payment_allowed"] = False
+            data["message"] = (
+                "Payment method not allowed in this registration form! Please use appropriate methods. "
+            )
+            return
+        else:
+            data["payment_allowed"] = True
+
+        # -------- deal with related_registration_form_id --------
+        related_registration_form_id = event_settings["related_registration_form_id"]
+
+        if (related_registration_form_id is not None) and (
+            related_registration_form_id != registration.registration_form_id
+        ):
+            try:
+                related_registration = Registration.query.filter(
+                    Registration.is_active,
+                    Registration.first_name == registration.first_name,
+                    Registration.last_name == registration.last_name,
+                    Registration.email == registration.email,
+                    Registration.registration_form_id == related_registration_form_id,
+                ).one()
+            except NoResultFound:
+                data["payment_allowed"] = False
+                data["message"] = (
+                    "No registration found! Please register the conference first. "
+                )
+                return
+            except MultipleResultsFound:
+                data["payment_allowed"] = False
+                data["message"] = (
+                    "Multiple registrations with the same name and email found! Please contact the organizers to resolve the conflict. "
+                )
+                return
+            else:
+                if related_registration.state != RegistrationState.complete:
+                    data["payment_allowed"] = False
+                    data["message"] = (
+                        "Registration has not been completed. Please go to the conference registration page and complete the registration."
+                    )
+                    return
+                else:
+                    data["payment_allowed"] = True
+        else:
+            data["payment_allowed"] = True
+
+        # -------- now the payment method is allowed --------
+
         # -------- pay logo url --------
         data["logo_url"] = url_for_plugin(
             self.name + ".static", filename="images/logo.png"
@@ -115,12 +228,25 @@ class THUpayPaymentPlugin(PaymentPluginMixin, IndicoPlugin):
         data["version"] = "3.0"
 
         # -------- biz content --------
+        trade_name = f"{plain_name} payment for {registration.registration_form.title} of {plain_title}"
+        if len(trade_name) > 64:
+            trade_name = trade_name[:64]
+
+        trade_summary = f"{plain_name} payment for {registration.registration_form.title} of {plain_title}"
+        if len(trade_summary) > 128:
+            trade_summary = trade_summary[:128]
+
         biz_content = {}
+        biz_content["paymentChannel"] = ""
         biz_content["outTradeNo"] = str(time.time())
-        biz_content["tradeName"] = f"{plain_name}: registration for {plain_title}"
+        biz_content["tradeName"] = trade_name
         biz_content["tradeAmount"] = round(amount, 2).to_eng_string()
         biz_content["moneyTypeId"] = currency
         biz_content["timeout"] = "15"
+        biz_content["tradeSummary"] = trade_summary
+        biz_content["payerId"] = ""
+        biz_content["payerIdType"] = ""
+        biz_content["payerName"] = plain_name
         biz_content["returnUrl"] = url_for_plugin(
             "payment_thupay.success", registration.locator.uuid, _external=True
         )
@@ -149,8 +275,21 @@ class THUpayPaymentPlugin(PaymentPluginMixin, IndicoPlugin):
             + "\n-----END RSA PRIVATE KEY-----"
         )
         rsa_util = RsaUtil(private_key=private_key)
+
         encrypt_str = rsa_util.encrypt_str(data_to_sign)
         signature = rsa_util.create_sign(encrypt_str)
         data["sign"] = signature
+
+        # -------- dealing with foreign card parameters --------
+        data["method_fc"] = "trade.pay.page.fc"
+
+        biz_content["paymentChannel"] = "boc.page.fc"
+        data["bizContent_fc"] = json.dumps(biz_content)
+
+        data_to_sign["method"] = data["method_fc"]
+        data_to_sign["bizContent"] = data["bizContent_fc"]
+        encrypt_str = rsa_util.encrypt_str(data_to_sign)
+        signature = rsa_util.create_sign(encrypt_str)
+        data["sign_fc"] = signature
 
         Logger.get().debug(encrypt_str)

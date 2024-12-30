@@ -1,3 +1,6 @@
+{% if not payment_allowed %}
+{{ message }}
+{% else %}
 Clicking on the <strong>Pay now</strong> button you will get redirected to the THUpay site in order to complete your
 transaction.
 
@@ -10,7 +13,7 @@ transaction.
     <dd>{{ format_currency(amount, currency, locale=session.lang) }}</dd>
     <dt></dt>
     <dd>
-        <form action="{{ settings.url }}" method="POST">
+        <form name="payment_form" action="{{ settings.url }}" method="POST">
             <input type="hidden" name="paymentItemId" value="{{ paymentItemId }}">
             <input type="hidden" name="method" value="{{ method }}">
             <input type="hidden" name="timestamp" value="{{ timestamp }}">
@@ -20,7 +23,22 @@ transaction.
             <input type="hidden" name="version" value="{{ version }}">
             <input type="hidden" name="bizContent" value="{{ bizContent }}">
 
-            <input type="image" name="submit" src="{{ logo_url }}" alt="THUpay">
+            <input type="hidden" name="method_fc" value="{{ method_fc }}">
+            <input type="hidden" name="bizContent_fc" value="{{ bizContent_fc }}">
+            <input type="hidden" name="sign_fc" value="{{ sign_fc }}">
+
+            <input type="image" name="submit" src="{{ logo_url }}">
+            <!-- <input type="submit" name="submit_domestic" value="domestic">
+            <input type="submit" name="submit_international" value="international"
+                onclick="change_method_to_international_payment()"> -->
         </form>
     </dd>
 </dl>
+<script>
+    function change_method_to_international_payment() {
+        document.payment_form.method.value = document.payment_form.method_fc.value
+        document.payment_form.bizContent.value = document.payment_form.bizContent_fc.value
+        document.payment_form.sign.value = document.payment_form.sign_fc.value
+    }
+</script>
+{% endif %}
