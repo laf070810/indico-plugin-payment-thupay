@@ -16,15 +16,19 @@ class RsaUtil(object):
         public_key_file=None,
         private_key_password=None,
     ):
-        self.private_key = self.import_key(
+        self.private_key = RsaUtil.import_key(
             key=private_key,
             key_file_path=private_key_file,
             passphrase=private_key_password,
         )
-        if public_key is None and public_key_file is None:
+        if (
+            public_key is None
+            and public_key_file is None
+            and self.private_key is not None
+        ):
             self.public_key = self.private_key.publickey()
         else:
-            self.public_key = self.import_key(
+            self.public_key = RsaUtil.import_key(
                 key=public_key, key_file_path=public_key_file
             )
 
@@ -46,9 +50,7 @@ class RsaUtil(object):
         :param signature:
         :return:
         """
-        b_encrypt_str = encrypt_str.encode()
-        # print(f'byte encrypt str {b_encrypt_str}')
-        hash_obj = MD5.new(b_encrypt_str)
+        hash_obj = MD5.new(encrypt_str.encode(encoding="utf-8"))
         decode_sign = base64.b64decode(signature)
         # print(f'decode sign {decode_sign}')
 
@@ -80,7 +82,7 @@ class RsaUtil(object):
         elif key_file_path is not None:
             return RSA.import_key(open(key_file_path).read(), passphrase=passphrase)
         else:
-            raise Exception("key not given")
+            return None
 
     @staticmethod
     def create_rsa_key(password):

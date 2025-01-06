@@ -276,7 +276,7 @@ class THUpayPaymentPlugin(PaymentPluginMixin, IndicoPlugin):
         )
         rsa_util = RsaUtil(private_key=private_key)
 
-        encrypt_str = rsa_util.encrypt_str(data_to_sign)
+        encrypt_str = RsaUtil.encrypt_str(data_to_sign)
         signature = rsa_util.create_sign(encrypt_str)
         data["sign"] = signature
 
