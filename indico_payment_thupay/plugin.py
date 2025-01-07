@@ -133,8 +133,8 @@ class THUpayPaymentPlugin(PaymentPluginMixin, IndicoPlugin):
         event_settings = data["event_settings"]
         event = data["event"]
         registration = data["registration"]
-        plain_name = str_to_ascii(remove_accents(registration.full_name))
-        plain_title = str_to_ascii(remove_accents(event.title))
+        plain_name = remove_accents(registration.full_name)
+        plain_title = remove_accents(event.title)
         amount = data["amount"]
         currency = data["currency"]
 
@@ -232,7 +232,7 @@ class THUpayPaymentPlugin(PaymentPluginMixin, IndicoPlugin):
         if len(trade_name) > 64:
             trade_name = trade_name[:64]
 
-        trade_summary = f"{plain_name} payment for {registration.registration_form.title} of {plain_title}"
+        trade_summary = f"{plain_name} ({registration.email}) payment for {registration.registration_form.title} of {plain_title}"
         if len(trade_summary) > 128:
             trade_summary = trade_summary[:128]
 
