@@ -183,8 +183,8 @@ class THUpayPaymentPlugin(PaymentPluginMixin, IndicoPlugin):
             try:
                 related_registration = Registration.query.filter(
                     Registration.is_active,
-                    Registration.first_name == registration.first_name,
-                    Registration.last_name == registration.last_name,
+                    # Registration.first_name == registration.first_name,
+                    # Registration.last_name == registration.last_name,
                     Registration.email == registration.email,
                     Registration.registration_form_id == related_registration_form_id,
                 ).one()
