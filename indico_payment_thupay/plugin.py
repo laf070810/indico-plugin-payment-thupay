@@ -83,11 +83,18 @@ class EventSettingsForm(PaymentEventSettingsFormBase):
             "(blacklist) JSON string of non-empty list of IDs of the registration forms which are not allowed to use this payment method. Registration forms that are not in this list are allowed. Empty string for no requirement. Actual allowed registration forms are the intersection of the allowed ones of allowed_registration_form_ids and disallowed_registration_form_ids."
         ),
     )
-    related_registration_form_id = IntegerField(
-        _("related_registration_form_id"),
+    completed_registration_form_id = IntegerField(
+        _("completed_registration_form_id"),
         [UsedIf(lambda form, _: form.enabled.data), Optional()],
         description=_(
-            "ID of the registration form which is required to be completed before the payment. Empty for no requirement. Currently only one related registration form is supported."
+            "ID of the registration form which is required to be completed before the payment. Empty for no requirement. Currently only one completed registration form is supported."
+        ),
+    )
+    uncompleted_registration_form_id = IntegerField(
+        _("uncompleted_registration_form_id"),
+        [UsedIf(lambda form, _: form.enabled.data), Optional()],
+        description=_(
+            "ID of the registration form which is required to be uncompleted before the payment. Empty for no requirement. Currently only one uncompleted registration form is supported."
         ),
     )
     custom_payment_name = StringField(
@@ -122,7 +129,8 @@ class THUpayPaymentPlugin(PaymentPluginMixin, IndicoPlugin):
         "payment_item_key": None,
         "allowed_registration_form_ids": "",
         "disallowed_registration_form_ids": "",
-        "related_registration_form_id": None,
+        "completed_registration_form_id": None,
+        "uncompleted_registration_form_id": None,
         "custom_payment_name": "",
     }
 
@@ -186,11 +194,13 @@ class THUpayPaymentPlugin(PaymentPluginMixin, IndicoPlugin):
         else:
             data["payment_allowed"] = True
 
-        # -------- deal with related_registration_form_id --------
-        related_registration_form_id = event_settings["related_registration_form_id"]
+        # -------- deal with completed_registration_form_id --------
+        completed_registration_form_id = event_settings[
+            "completed_registration_form_id"
+        ]
 
-        if (related_registration_form_id is not None) and (
-            related_registration_form_id != registration.registration_form_id
+        if (completed_registration_form_id is not None) and (
+            completed_registration_form_id != registration.registration_form_id
         ):
             try:
                 related_registration = Registration.query.filter(
@@ -198,25 +208,62 @@ class THUpayPaymentPlugin(PaymentPluginMixin, IndicoPlugin):
                     # Registration.first_name == registration.first_name,
                     # Registration.last_name == registration.last_name,
                     Registration.email == registration.email,
-                    Registration.registration_form_id == related_registration_form_id,
+                    Registration.registration_form_id == completed_registration_form_id,
                 ).one()
             except NoResultFound:
                 data["payment_allowed"] = False
                 data["message"] = (
-                    "No registration found! Please register the conference first. "
+                    "No related registration found! Please refer to the notices and complete the related registration first. "
                 )
                 return
             except MultipleResultsFound:
                 data["payment_allowed"] = False
                 data["message"] = (
-                    "Multiple registrations with the same email found! Please contact the organizers to resolve the conflict. "
+                    "Multiple registrations with the same email in the related registration found! Please contact the organizers to resolve the conflict. "
                 )
                 return
             else:
                 if related_registration.state != RegistrationState.complete:
                     data["payment_allowed"] = False
                     data["message"] = (
-                        "Registration has not been completed. Please go to the conference registration page and complete the registration."
+                        "Related registration has not been completed. Please refer to the notices and complete the related registration first."
+                    )
+                    return
+                else:
+                    data["payment_allowed"] = True
+        else:
+            data["payment_allowed"] = True
+
+        # -------- deal with uncompleted_registration_form_id --------
+        uncompleted_registration_form_id = event_settings[
+            "uncompleted_registration_form_id"
+        ]
+
+        if (uncompleted_registration_form_id is not None) and (
+            uncompleted_registration_form_id != registration.registration_form_id
+        ):
+            try:
+                related_registration = Registration.query.filter(
+                    Registration.is_active,
+                    # Registration.first_name == registration.first_name,
+                    # Registration.last_name == registration.last_name,
+                    Registration.email == registration.email,
+                    Registration.registration_form_id
+                    == uncompleted_registration_form_id,
+                ).one()
+            except NoResultFound:
+                data["payment_allowed"] = True
+            except MultipleResultsFound:
+                data["payment_allowed"] = False
+                data["message"] = (
+                    "Multiple registrations with the same email in the related registration found! Please contact the organizers to resolve the conflict. "
+                )
+                return
+            else:
+                if related_registration.state == RegistrationState.complete:
+                    data["payment_allowed"] = False
+                    data["message"] = (
+                        "Related registration has been completed. This payment is not allowed. Please refer to the notices."
                     )
                     return
                 else:
