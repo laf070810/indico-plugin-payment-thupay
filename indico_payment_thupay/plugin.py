@@ -90,6 +90,13 @@ class EventSettingsForm(PaymentEventSettingsFormBase):
             "ID of the registration form which is required to be completed before the payment. Empty for no requirement. Currently only one related registration form is supported."
         ),
     )
+    custom_payment_name = StringField(
+        _("custom_payment_name"),
+        [UsedIf(lambda form, _: form.enabled.data), Optional()],
+        description=_(
+            "Custom payment name. Used in tradeName and tradeSummary. If empty, the title of the event will be used. "
+        ),
+    )
 
 
 class THUpayPaymentPlugin(PaymentPluginMixin, IndicoPlugin):
@@ -116,6 +123,7 @@ class THUpayPaymentPlugin(PaymentPluginMixin, IndicoPlugin):
         "allowed_registration_form_ids": "",
         "disallowed_registration_form_ids": "",
         "related_registration_form_id": None,
+        "custom_payment_name": "",
     }
 
     def init(self):
@@ -134,7 +142,11 @@ class THUpayPaymentPlugin(PaymentPluginMixin, IndicoPlugin):
         event = data["event"]
         registration = data["registration"]
         plain_name = remove_accents(registration.full_name)
-        plain_title = remove_accents(event.title)
+        plain_title = remove_accents(
+            event.title
+            if event_settings["custom_payment_name"] == ""
+            else event_settings["custom_payment_name"]
+        )
         amount = data["amount"]
         currency = data["currency"]
 
