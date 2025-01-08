@@ -197,7 +197,7 @@ class THUpayPaymentPlugin(PaymentPluginMixin, IndicoPlugin):
             except MultipleResultsFound:
                 data["payment_allowed"] = False
                 data["message"] = (
-                    "Multiple registrations with the same name and email found! Please contact the organizers to resolve the conflict. "
+                    "Multiple registrations with the same email found! Please contact the organizers to resolve the conflict. "
                 )
                 return
             else:
