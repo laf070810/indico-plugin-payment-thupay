@@ -3,7 +3,7 @@ import base64
 # -*- coding: utf-8 -*-
 from Crypto.Hash import MD5
 from Crypto.PublicKey import RSA
-from Crypto.Signature import PKCS1_v1_5
+from Crypto.Signature import pkcs1_15
 
 
 class RsaUtil(object):
@@ -39,7 +39,7 @@ class RsaUtil(object):
         """
         hash_obj = MD5.new(encrypt_str.encode(encoding="utf-8"))
         # 改用PKCS1_v1_5
-        return base64.b64encode(PKCS1_v1_5.new(self.private_key).sign(hash_obj)).decode(
+        return base64.b64encode(pkcs1_15.new(self.private_key).sign(hash_obj)).decode(
             encoding="utf-8"
         )
 
@@ -56,7 +56,7 @@ class RsaUtil(object):
 
         try:
             # 改用PKCS1_v1_5
-            PKCS1_v1_5.new(self.public_key).verify(hash_obj, decode_sign)
+            pkcs1_15.new(self.public_key).verify(hash_obj, decode_sign)
         except (ValueError, TypeError) as e:
             print(f"signature invalid, error {e}")
             return False
