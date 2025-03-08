@@ -306,6 +306,7 @@ class THUpayPaymentPlugin(PaymentPluginMixin, IndicoPlugin):
         biz_content["payerId"] = ""
         biz_content["payerIdType"] = ""
         biz_content["payerName"] = registration.friendly_id
+        biz_content["payerEmail"] = registration.email
         biz_content["returnUrl"] = url_for_plugin(
             "payment_thupay.success", registration.locator.uuid, _external=True
         )
