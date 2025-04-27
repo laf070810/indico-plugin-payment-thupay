@@ -352,4 +352,4 @@ class THUpayPaymentPlugin(PaymentPluginMixin, IndicoPlugin):
         signature = rsa_util.create_sign(encrypt_str)
         data["sign_fc"] = signature
 
-        Logger.get().debug(encrypt_str)
+        Logger.get().info(encrypt_str)

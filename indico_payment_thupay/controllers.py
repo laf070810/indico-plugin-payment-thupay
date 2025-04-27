@@ -35,6 +35,8 @@ class RHTHUpayNotify(RH):
             raise BadRequest
         self.biz_content = json.loads(request.form.get("bizContent"))
 
+        Logger.get().info(request)
+
     def _process(self):
         # -------- verify signature --------
         if not self._verify_signature():
