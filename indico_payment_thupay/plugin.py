@@ -288,12 +288,10 @@ class THUpayPaymentPlugin(PaymentPluginMixin, IndicoPlugin):
 
         # -------- biz content --------
         trade_name = f"{plain_name} payment for {registration.registration_form.title} of {plain_title}"
-        if len(trade_name) > 64:
-            trade_name = trade_name[:64]
+        trade_name = trade_name[:64]
 
         trade_summary = f"{plain_name} ({registration.email}) payment for {registration.registration_form.title} of {plain_title}"
-        if len(trade_summary) > 127:
-            trade_summary = trade_summary[:127]
+        trade_summary = trade_summary[:60]
 
         biz_content = {}
         biz_content["paymentChannel"] = ""
