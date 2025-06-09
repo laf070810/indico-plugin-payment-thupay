@@ -2,7 +2,7 @@ import json
 import time
 
 import requests
-from flask_pluginengine import render_plugin_template
+from flask_pluginengine import current_plugin, render_plugin_template
 from indico.core.logger import Logger
 from indico.core.plugins import IndicoPlugin, url_for_plugin
 from indico.modules.events.payment import (
@@ -338,6 +338,8 @@ class THUpayPaymentPlugin(PaymentPluginMixin, IndicoPlugin):
         signature = rsa_util.create_sign(encrypt_str)
         data["sign"] = signature
 
+        current_plugin.logger.info(f"payment form biz_content: {biz_content}")
+
         # -------- dealing with foreign card parameters --------
         data["method_fc"] = "trade.pay.page.fc"
 
@@ -350,4 +352,4 @@ class THUpayPaymentPlugin(PaymentPluginMixin, IndicoPlugin):
         signature = rsa_util.create_sign(encrypt_str)
         data["sign_fc"] = signature
 
-        Logger.get().info(encrypt_str)
+        current_plugin.logger.info(f"payment form encrypt_str: {encrypt_str}")

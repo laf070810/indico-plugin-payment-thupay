@@ -35,12 +35,12 @@ class RHTHUpayNotify(RH):
             raise BadRequest
         self.biz_content = json.loads(request.form.get("bizContent"))
 
-        Logger.get().info(request)
+        current_plugin.logger.info(request)
 
     def _process(self):
         # -------- verify signature --------
         if not self._verify_signature():
-            Logger.get().info(
+            current_plugin.logger.info(
                 f"Signature verification failed. Transaction not registered. Request form: {request.form}"
             )
             return
