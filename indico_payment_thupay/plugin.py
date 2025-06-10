@@ -290,8 +290,8 @@ class THUpayPaymentPlugin(PaymentPluginMixin, IndicoPlugin):
         trade_name = f"{plain_name} payment for {registration.registration_form.title} of {plain_title}"
         trade_name = trade_name[:64]
 
-        trade_summary = f"{plain_name} ({registration.email}) payment for {registration.registration_form.title} of {plain_title}"
-        trade_summary = trade_summary[:60]
+        trade_summary = f"{registration.email}"
+        trade_summary = trade_summary[:30]
 
         biz_content = {}
         biz_content["paymentChannel"] = ""
